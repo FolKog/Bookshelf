@@ -15,12 +15,12 @@ class Review
     public $rating;
     public $created_at;
 
-    public function __construct($db)
+    public function __construct(PDO $db)
     {
         $this->conn = $db;
     }
 
-    public function getAll()
+    public function getAll(): array
     {
         $sql = "SELECT * FROM reviews";
         $stmt = $this->conn->prepare($sql);
@@ -28,38 +28,48 @@ class Review
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    public function updateReview()
+    public function updateReview(): bool
     {
         $stmt = $this->conn->prepare("UPDATE reviews SET comment = ?, rating = ? WHERE id = ?");
-        return $stmt->execute([$this->comment, $this->rating, $this->id]);
+        if (!$stmt->execute([$this->comment, $this->rating, $this->id])) {
+            throw new \Exception("Ошибка при обновлении отзыва: " . implode(", ", $stmt->errorInfo()));
+        }
+        return true;
     }
 
-    public function createReview()
+    public function createReview(): bool
     {
         $stmt = $this->conn->prepare("INSERT INTO reviews (user_id, book_id, comment, rating, created_at) VALUES (?, ?, ?, ?, NOW())");
-        return $stmt->execute([$this->user_id, $this->book_id, $this->comment, $this->rating]);
+        if (!$stmt->execute([$this->user_id, $this->book_id, $this->comment, $this->rating])) {
+            throw new \Exception("Ошибка при создании отзыва: " . implode(", ", $stmt->errorInfo()));
+        }
+        return true;
     }
 
-    public function deleteReview($id)
+    public function deleteReview(int $id): bool
     {
         $stmt = $this->conn->prepare("DELETE FROM reviews WHERE id = ?");
-        return $stmt->execute([$id]);
+        if (!$stmt->execute([$id])) {
+            throw new \Exception("Ошибка при удалении отзыва: " . implode(", ", $stmt->errorInfo()));
+        }
+        return true;
     }
 
     public function getReviewsByBookId(int $bookId): array
     {
-        $stmt = $this->conn->prepare("SELECT * FROM reviews WHERE book_id = ?");
+        $stmt = $this->conn->prepare("SELECT id, user_id, comment, rating, created_at FROM reviews WHERE book_id = ?");
         $stmt->execute([$bookId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    public function getReviewByUserId($userId)
+
+    public function getReviewByUserId(int $userId): array
     {
         $stmt = $this->conn->prepare("SELECT r.rating, r.comment, r.created_at, b.title 
-                                  FROM reviews r 
-                                  JOIN books b ON r.book_id = b.id 
-                                  WHERE r.user_id = ?");
+                                      FROM reviews r 
+                                      JOIN books b ON r.book_id = b.id 
+                                      WHERE r.user_id = ?");
         $stmt->execute([$userId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC); // <--- Важно!
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getAverageRatingByBookId(int $bookId): ?float
@@ -68,5 +78,27 @@ class Review
         $stmt->execute([$bookId]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result['avg_rating'] ? round($result['avg_rating'], 1) : null;
+    }
+
+    public function reviewExists(int $id): bool
+    {
+        $stmt = $this->conn->prepare("SELECT COUNT(*) FROM reviews WHERE id = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetchColumn() > 0;
+    }
+
+    public function getReviewById(int $id): ?array
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM reviews WHERE id = ?");
+        $stmt->execute([$id]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: null;
+    }
+
+    public function countReviewsByBookId(int $bookId): int
+    {
+        $stmt = $this->conn->prepare("SELECT COUNT(*) as review_count FROM reviews WHERE book_id = ?");
+        $stmt->execute([$bookId]);
+        return (int) $stmt->fetchColumn();
     }
 }

@@ -48,4 +48,9 @@ class BooksController
     {
         return $this->book->getAverageRatingByBookId($bookId);
     }
+
+    public function searchBooks($query)
+    {
+        return $this->book->searchBooks($query);
+    }
 }

@@ -64,4 +64,20 @@ class Book
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result['avg_rating'] ? round($result['avg_rating'], 1) : null;
     }
+
+    public function searchBooks($query)
+    {
+        $sql = "SELECT * FROM books WHERE 
+                title LIKE :query OR 
+                author LIKE :query OR 
+                genre LIKE :query 
+                LIMIT 10";
+
+        $stmt = $this->conn->prepare($sql);
+        $searchTerm = "%{$query}%";
+        $stmt->bindParam(':query', $searchTerm);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

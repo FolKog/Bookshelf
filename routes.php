@@ -3,7 +3,7 @@
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/router.php';
 
-get('/', 'index.php');
+get('/', 'pages/index.php');
 
 get('/book/$id', 'pages/book.php');
 post('/book/$id', 'pages/book.php');

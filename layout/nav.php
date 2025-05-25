@@ -1,14 +1,18 @@
 <?php
 require_once __DIR__ . '/../config/function/auth.php';
 ?>
-<header>
+<header class="nnn">
     <div class="logo"></div>
-    <div class="navbar">
-        <ul>
+    <div class="navbar container">
+        <ul id="menu">
             <li><a href="/">Главная</a></li>
-            <li><a href="#">О нас</a></li>
-            <li><a href="#">Контакты</a></li>
         </ul>
+    </div>
+    <div class="search-container">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Поиск книг, авторов, жанров...">
+            <div class="search-results" id="searchResults"></div>
+        </div>
     </div>
     <nav>
         <?php if (isLoggedIn()): ?>
@@ -19,5 +23,4 @@ require_once __DIR__ . '/../config/function/auth.php';
             <a href="/register">Регистрация</a>
         <?php endif; ?>
     </nav>
-
 </header>

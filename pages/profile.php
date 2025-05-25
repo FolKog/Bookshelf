@@ -1,25 +1,20 @@
 <?php
 require_once __DIR__ . '/../config/function/auth.php';
-requireAuth(); // Не пускаем неавторизованных
-
-$userId = $_SESSION['user_id'];
-$username = $_SESSION['username'];
-
+requireAuth();
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../App/Models/Review.php';
 
 use App\Models\Review;
 
-if (!isset($_SESSION['user_id'])) {
+$userId = $_SESSION['user_id'] ?? null;
+
+if (!$userId) {
     header('Location: /register');
     exit;
 }
 
-$userId = $_SESSION['user_id'];
-
-// Получаем данные пользователя (добавили avatar)
-$query = "SELECT username, is_admin, avatar FROM users WHERE id = ?";
+$query = "SELECT username, is_admin, email, avatar FROM users WHERE id = ?";
 $stmt = $conn->prepare($query);
 $stmt->execute([$userId]);
 $user = $stmt->fetch();
@@ -30,334 +25,244 @@ if (!$user) {
 }
 
 $username = htmlspecialchars($user['username']);
+$email = htmlspecialchars($user['email']);
 $isAdmin = (bool) $user['is_admin'];
-$avatar = $user['avatar'] ?? '/assets/default-avatar.png'; // стандартный аватар
+$avatar = $user['avatar'] ?? '/assets/default-avatar.png';
 
-// Получаем отзывы пользователя
 $reviewModel = new Review($conn);
 $userReviews = $reviewModel->getReviewByUserId($userId);
-
-
-
 ?>
+
 <?php $titleName = 'Profile' ?>
 <?php $titlePage = 'Личный кабинет' ?>
 <?php require_once "./layout/header.php"; ?>
 <?php require_once "./layout/nav.php"; ?>
 
-
-<div class="profile-main">
-    <div class="profile-card">
-        <img src="<?= htmlspecialchars($user['avatar'] ?? 'assets/img/avatar/default-avatar.png') ?>" alt="Аватар" class="avatar-img">
-        <div class="profile-info">
-            <h1 class="profile-title">Привет, <?= $username ?>!</h1>
-            <div class="profile-email"><span>Email:</span> <b><?= htmlspecialchars($users['email'] ?? '—') ?></b></div>
+<main class="profile-container">
+    <section class="profile-header">
+        <img src="<?= $avatar ?>" alt="Аватар" class="avatar">
+        <div class="user-info">
+            <h1><?= $username ?></h1>
+            <p>Email: <strong><?= $email ?></strong></p>
             <form action="/uploadAvatar" method="post" enctype="multipart/form-data" class="avatar-form">
-                <label for="avatar">Сменить аватар:</label>
-                <input type="file" name="avatar" accept="image/*" required>
+                <label for="avatar-upload" class="custom-file-label">Выбрать файл</label>
+                <input type="file" id="avatar-upload" name="avatar" accept="image/*" required>
                 <button type="submit">Загрузить</button>
             </form>
-        </div>
-    </div>
-    <div class="profile-actions-block">
-        <div class="profile-role">Обычный пользователь</div>
-        <div class="profile-links">
-            <a href="/">На главную</a>
-            <a href="/logout">Выйти</a>
-        </div>
-    </div>
-</div>
 
-<h2 class="profile-history-title">История моих отзывов</h2>
-<?php if (empty($userReviews)): ?>
-    <p class="profile-history-empty">Вы ещё не оставили ни одного отзыва.</p>
-<?php else: ?>
-    <ul class="user-reviews">
-        <?php foreach ($userReviews as $review): ?>
-            <li>
-                <div class="review-movie"><b><?= htmlspecialchars($review['title']) ?></b></div>
-                <div class="review-meta">
-                    <span class="review-rating">Оценка: <b><?= $review['rating'] ?>/5</b></span>
-                    <span class="review-date"><?= date('d.m.Y H:i', strtotime($review['created_at'])) ?></span>
-                </div>
-                <div class="review-comment">"<?= htmlspecialchars($review['comment']) ?>"</div>
-            </li>
-        <?php endforeach; ?>
-    </ul>
+        </div>
+    </section>
 
-<?php endif; ?>
+    <section class="profile-links">
+        <span class="role"><?= $isAdmin ? 'Администратор' : 'Пользователь' ?></span>
+        <div class="links">
+            <a href="/">Главная</a>
+            <a href="/logout">Выход</a>
+        </div>
+    </section>
+
+    <section class="reviews-section">
+        <h2>Мои отзывы</h2>
+        <?php if (empty($userReviews)): ?>
+            <p class="empty">Вы ещё не оставили отзывов.</p>
+        <?php else: ?>
+            <ul class="reviews">
+                <?php foreach ($userReviews as $review): ?>
+                    <li class="review">
+                        <h3><?= htmlspecialchars($review['title']) ?></h3>
+                        <div class="review-meta">
+                            <span>Оценка: <?= $review['rating'] ?>/5</span>
+                            <time><?= date('d.m.Y H:i', strtotime($review['created_at'])) ?></time>
+                        </div>
+                        <blockquote><?= htmlspecialchars($review['comment']) ?></blockquote>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    </section>
+</main>
+
 <style>
-    .profile-main {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 32px;
-        align-items: flex-start;
-        margin: 40px auto 0 auto;
-        max-width: 900px;
+    :root {
+        --bg-light: #ffffff;
+        --bg-grey: #f5f5f5;
+        --text-dark: #111111;
+        --text-muted: #666666;
+        --primary: #000000;
+        --border-color: #dddddd;
     }
 
-    .profile-card {
-        background: #fff;
-        border-radius: 18px;
-        box-shadow: 0 4px 24px rgba(56, 189, 248, 0.08);
-        padding: 32px 28px;
+    body {
+        background: var(--bg-light);
+        color: var(--text-dark);
+        font-family: 'Segoe UI', sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    .profile-container {
+        max-width: 1000px;
+        margin: 2rem auto;
+        padding: 1rem;
+    }
+
+    .profile-header {
+        background: var(--bg-grey);
+        border-radius: 12px;
+        padding: 2rem;
         display: flex;
-        flex-direction: column;
+        gap: 2rem;
         align-items: center;
-        min-width: 270px;
-        max-width: 320px;
-        flex: 1 1 270px;
-        gap: 18px;
+        border: 1px solid var(--border-color);
     }
 
-    .avatar-img {
-        width: 110px;
-        height: 110px;
+    .avatar {
+        width: 120px;
+        height: 120px;
         border-radius: 50%;
         object-fit: cover;
-        border: 3px solid #38bdf8;
-        background: #f3f6fa;
-        margin-bottom: 10px;
+        border: 3px solid var(--primary);
     }
 
-    .profile-info {
-        width: 100%;
+    .user-info h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        color: var(--primary);
+    }
+
+    .avatar-form {
+        margin-top: 1rem;
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        align-items: flex-start;
+        gap: 0.5rem;
     }
 
-    .profile-title {
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: #2356c7;
-        margin-bottom: 2px;
+    .avatar-form input {
+        border: 1px solid var(--border-color);
+        padding: 0.5rem;
+        color: var(--text-dark);
+        background: #fff;
     }
 
-    .profile-email {
-        font-size: 1rem;
-        color: #444;
-        margin-bottom: 6px;
-    }
-
-    .profile-email span {
-        color: #888;
-        font-weight: 500;
-    }
-
-    .avatar-form,
-    .profile-edit-form {
-        display: flex;
-        flex-direction: column;
-        gap: 7px;
-        width: 100%;
-    }
-
-    .avatar-form label,
-    .profile-edit-form label {
-        font-size: 0.98rem;
-        color: #2356c7;
-        font-weight: 500;
-    }
-
-    .avatar-form input[type="file"],
-    .profile-edit-form input[type="text"],
-    .profile-edit-form input[type="password"] {
-        padding: 7px 10px;
-        background: #f1f1f1;
-        border-radius: 6px;
-        border: 1px solid #d1d5db;
-        font-size: 0.98rem;
-    }
-
-    .avatar-form button,
-    .profile-edit-form button {
-        background-color: #38bdf8;
-        color: white;
+    .avatar-form button {
+        background: var(--primary);
         border: none;
-        padding: 8px 12px;
+        padding: 0.6rem 1.2rem;
+        color: #fff;
+        font-weight: bold;
         border-radius: 6px;
         cursor: pointer;
-        font-weight: 500;
-        transition: background 0.3s;
-        margin-top: 4px;
-    }
-
-    .avatar-form button:hover,
-    .profile-edit-form button:hover {
-        background-color: #0ea5e9;
-    }
-
-    .profile-actions-block {
-        flex: 2 1 320px;
-        min-width: 220px;
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-        background: #f9fafb;
-        border-radius: 16px;
-        box-shadow: 0 2px 12px rgba(56, 189, 248, 0.06);
-        padding: 28px 22px;
-        align-items: flex-start;
-    }
-
-    .profile-role {
-        font-style: italic;
-        color: #4f8cff;
-        font-size: 1.05rem;
-        margin-bottom: 8px;
-    }
-
-    .profile-role.admin {
-        color: #d35400;
-        font-weight: bold;
-    }
-
-    .profile-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        width: 100%;
-    }
-
-    .profile-actions a {
-        padding: 10px 0;
-        background: linear-gradient(90deg, #4f8cff 0%, #2356c7 100%);
-        border-radius: 8px;
-        text-decoration: none;
-        color: #fff;
-        font-weight: 500;
-        font-size: 1.05rem;
-        text-align: center;
-        transition: background 0.2s, color 0.2s;
-    }
-
-    .profile-actions a:hover {
-        background: linear-gradient(90deg, #2356c7 0%, #4f8cff 100%);
-        color: #fff;
-        text-decoration: underline;
     }
 
     .profile-links {
+        margin: 2rem 0;
         display: flex;
-        gap: 10px;
-        margin-top: 10px;
-        width: 100%;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
     }
 
-    .profile-links a {
-        flex: 1 1 0;
-        padding: 8px 0;
-        background: #eee;
-        border-radius: 8px;
+    .profile-links .role {
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: bold;
+    }
+
+    .profile-links .links a {
+        margin: 0.5rem;
+        background: var(--primary);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
         text-decoration: none;
-        color: #2356c7;
-        font-weight: 500;
-        text-align: center;
-        transition: background 0.2s, color 0.2s;
-    }
-
-    .profile-links a:hover {
-        background: #4f8cff;
         color: #fff;
+        font-weight: 600;
     }
 
-    .profile-history-title {
-        margin-top: 48px;
-        font-size: 1.25rem;
-        color: #2356c7;
-        text-align: left;
-        max-width: 900px;
-        margin-left: auto;
-        margin-right: auto;
+    .reviews-section {
+        background: var(--bg-grey);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
     }
 
-    .profile-history-empty {
-        color: #888;
-        margin: 18px auto 0 auto;
-        max-width: 900px;
-        text-align: left;
+    .reviews-section h2 {
+        margin-bottom: 1rem;
+        color: var(--primary);
     }
 
-    .user-reviews {
+    .reviews {
         list-style: none;
         padding: 0;
-        margin: 18px auto 0 auto;
-        max-width: 900px;
-    }
-
-    .user-reviews li {
-        background: #f8f8f8;
-        padding: 15px 18px;
-        margin-bottom: 12px;
-        border-radius: 10px;
-        box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
-        font-size: 1rem;
-        color: #222;
+        margin: 0;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 1rem;
     }
 
-    .review-movie {
-        font-size: 1.08rem;
-        color: #2356c7;
-        font-weight: 600;
+    .review {
+        background: #fff;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .review h3 {
+        margin: 0 0 0.5rem;
+        font-size: 1.2rem;
+        color: var(--primary);
     }
 
     .review-meta {
         display: flex;
-        gap: 18px;
-        font-size: 0.98rem;
-        color: #888;
+        justify-content: space-between;
+        font-size: 0.9rem;
+        color: var(--text-muted);
     }
 
-    .review-rating {
-        color: #facc15;
-        font-weight: 600;
-    }
-
-    .review-date {
-        color: #b0b0b0;
-    }
-
-    .review-comment {
-        color: #222;
+    .review blockquote {
+        margin: 0.8rem 0 0;
+        color: var(--text-dark);
         font-style: italic;
-        margin-top: 2px;
     }
 
-    @media (max-width: 900px) {
-        .profile-main {
-            flex-direction: column;
-            gap: 18px;
-            align-items: stretch;
-        }
-
-        .profile-card,
-        .profile-actions-block {
-            max-width: 100%;
-            min-width: 0;
-            width: 100%;
-        }
+    .empty {
+        color: var(--text-muted);
+        font-style: italic;
     }
 
     @media (max-width: 600px) {
-
-        .profile-card,
-        .profile-actions-block {
-            padding: 16px 8px;
+        .profile-header {
+            flex-direction: column;
+            align-items: flex-start;
         }
 
-        .profile-title {
-            font-size: 1.05rem;
+        .avatar {
+            width: 100px;
+            height: 100px;
         }
+    }
 
-        .avatar-img {
-            width: 70px;
-            height: 70px;
-        }
+    /* Скрываем оригинальный input */
+    .avatar-form input[type="file"] {
+        display: none;
+    }
+
+    /* Кастомная кнопка для выбора файла */
+    .custom-file-label {
+        display: inline-block;
+        padding: 0.6rem 1.2rem;
+        background-color: var(--primary);
+        color: #fff;
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+        text-align: center;
+        margin-bottom: 0.5rem;
+        transition: background 0.3s;
+    }
+
+    .custom-file-label:hover {
+        background-color: #222;
     }
 </style>
 
