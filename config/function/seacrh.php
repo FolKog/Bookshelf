@@ -1,42 +1,81 @@
 <?php
 require_once __DIR__ . "/../db.php";
 
-use App\Models\Book;
-use App\Controllers\BooksController;
-
-
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET');
+header('Access-Control-Allow-Headers: Content-Type');
 
-if (isset($_GET['query'])) {
-    $query = trim($_GET['query']);
+require_once __DIR__ . '/../db.php';
 
-    if (empty($query)) {
-        echo json_encode([]);
+try {
+    if (!isset($_GET['query']) || empty(trim($_GET['query']))) {
+        echo json_encode(['error' => 'Пустой запрос']);
         exit;
     }
 
-    try {
-        // SQL запрос для поиска по title, author, genre
-        $sql = "SELECT id, title, author, genre, description, cover_image, created_at 
-                FROM books 
-                WHERE title LIKE :query 
-                   OR author LIKE :query 
-                   OR genre LIKE :query 
-                ORDER BY title ASC 
-                LIMIT 10";
+    $query = trim($_GET['query']);
 
-        $stmt = $conn->prepare($sql);
-        $searchTerm = "%{$query}%";
-        $stmt->bindParam(':query', $searchTerm, PDO::PARAM_STR);
-        $stmt->execute();
-
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        echo json_encode($results);
-    } catch (PDOException $e) {
-        echo json_encode(['error' => 'Ошибка поиска: ' . $e->getMessage()]);
+    if (strlen($query) < 2) {
+        echo json_encode(['error' => 'Слишком короткий запрос']);
+        exit;
     }
-} else {
-    echo json_encode([]);
+
+    // Подготавливаем поисковый запрос
+    $searchTerm = '%' . $query . '%';
+
+    // SQL запрос для поиска по названию, автору и жанру
+    $sql = "SELECT 
+                b.id,
+                b.title,
+                b.author,
+                b.genre,
+                b.cover_image,
+                b.description,
+                b.publication_year,
+                CASE 
+                    WHEN b.title LIKE ? THEN 3
+                    WHEN b.author LIKE ? THEN 2
+                    WHEN b.genre LIKE ? THEN 1
+                    ELSE 0
+                END as relevance
+            FROM books b 
+            WHERE b.title LIKE ? 
+               OR b.author LIKE ? 
+               OR b.genre LIKE ?
+               OR b.description LIKE ?
+            ORDER BY relevance DESC, b.title ASC
+            LIMIT 20";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param(
+        'sssssss',
+        $searchTerm,
+        $searchTerm,
+        $searchTerm, // для relevance
+        $searchTerm,
+        $searchTerm,
+        $searchTerm,
+        $searchTerm  // для WHERE
+    );
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $books = [];
+    while ($row = $result->fetch_assoc()) {
+        // Добавляем полный путь к изображению, если он относительный
+        if (!empty($row['cover_image']) && !str_starts_with($row['cover_image'], 'http')) {
+            if (!str_starts_with($row['cover_image'], '/')) {
+                $row['cover_image'] = '/' . $row['cover_image'];
+            }
+        }
+
+        $books[] = $row;
+    }
+
+    echo json_encode($books);
+} catch (Exception $e) {
+    error_log("Search error: " . $e->getMessage());
+    echo json_encode(['error' => 'Ошибка поиска']);
 }

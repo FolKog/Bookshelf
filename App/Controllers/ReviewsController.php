@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\Review;
+use Exception;
 
 class ReviewsController
 {
@@ -18,15 +19,6 @@ class ReviewsController
         return $this->review->getAll();
     }
 
-    public function updateReview(array $data): bool
-    {
-        $this->review->id = $data['id'];
-        $this->review->comment = $data['comment'];
-        $this->review->rating = $data['rating'];
-
-        return $this->review->updateReview();
-    }
-
     public function createReview(array $data): bool
     {
         $this->review->user_id = $data['user_id'];
@@ -37,10 +29,21 @@ class ReviewsController
         return $this->review->createReview();
     }
 
-    public function deleteReview(int $id): bool
+    public function delete($id, $userId): bool
     {
-        return $this->review->deleteReview($id);
+        return $this->review->deleteById($id, $userId);
     }
+
+    public function update($id, $userId, $comment, $rating): bool
+    {
+        try {
+            return $this->review->updateById($id, $userId, $comment, $rating);
+        } catch (Exception $e) {
+            error_log('Failed to update review: ' . $e->getMessage());
+            return false;
+        }
+    }
+
 
     public function getReviewsByBookId(int $bookId): array
     {

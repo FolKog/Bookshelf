@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comment'], $_POST['ra
 $userId = $_SESSION['user_id'] ?? null;
 $userHasReviewed = false;
 
-$stmt = $conn->prepare("SELECT r.comment, r.rating, r.created_at, u.username 
+$stmt = $conn->prepare("SELECT r.comment, r.rating, r.created_at, r.user_id, u.username 
                         FROM reviews r 
                         JOIN users u ON r.user_id = u.id 
                         WHERE r.book_id = :book_id 

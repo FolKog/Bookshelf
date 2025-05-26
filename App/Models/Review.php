@@ -28,15 +28,6 @@ class Review
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    public function updateReview(): bool
-    {
-        $stmt = $this->conn->prepare("UPDATE reviews SET comment = ?, rating = ? WHERE id = ?");
-        if (!$stmt->execute([$this->comment, $this->rating, $this->id])) {
-            throw new \Exception("Ошибка при обновлении отзыва: " . implode(", ", $stmt->errorInfo()));
-        }
-        return true;
-    }
-
     public function createReview(): bool
     {
         $stmt = $this->conn->prepare("INSERT INTO reviews (user_id, book_id, comment, rating, created_at) VALUES (?, ?, ?, ?, NOW())");
@@ -46,14 +37,28 @@ class Review
         return true;
     }
 
-    public function deleteReview(int $id): bool
+    public function deleteById($id, $userId): bool
     {
-        $stmt = $this->conn->prepare("DELETE FROM reviews WHERE id = ?");
-        if (!$stmt->execute([$id])) {
-            throw new \Exception("Ошибка при удалении отзыва: " . implode(", ", $stmt->errorInfo()));
-        }
-        return true;
+        $stmt = $this->conn->prepare("DELETE FROM reviews WHERE id = :id AND user_id = :user_id");
+        $stmt->bindParam(':id', $id, \PDO::PARAM_INT);
+        $stmt->bindParam(':user_id', $userId, \PDO::PARAM_INT);
+        return $stmt->execute();
     }
+
+    public function updateById($id, $userId, $comment, $rating): bool
+    {
+        $stmt = $this->conn->prepare("
+        UPDATE reviews 
+        SET comment = :comment, rating = :rating 
+        WHERE id = :id AND user_id = :user_id
+    ");
+        $stmt->bindParam(':comment', $comment, \PDO::PARAM_STR);
+        $stmt->bindParam(':rating', $rating, \PDO::PARAM_INT);
+        $stmt->bindParam(':id', $id, \PDO::PARAM_INT);
+        $stmt->bindParam(':user_id', $userId, \PDO::PARAM_INT);
+        return $stmt->execute();
+    }
+
 
     public function getReviewsByBookId(int $bookId): array
     {
