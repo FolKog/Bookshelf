@@ -24,4 +24,9 @@ get('/logout', 'config/logout.php');
 
 get('/welcome', 'pages/welcome.php');
 
+
+get('', 'api/delete_review.php');
+get('', 'api/delete_review.php');
+post('', 'api/review_action.php');
+
 any('/404', 'pages/404.php');

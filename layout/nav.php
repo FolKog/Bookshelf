@@ -16,11 +16,11 @@ require_once __DIR__ . '/../config/function/auth.php';
     </div>
     <nav>
         <?php if (isLoggedIn()): ?>
-            <a href="/profile">Профиль</a>
-            <a href="/logout">Выйти</a>
+            <a class="auth-register" href="/profile">Профиль</a>
+            <a class="auth-login" href="/logout">Выйти</a>
         <?php else: ?>
-            <a href="/login">Вход</a>
-            <a href="/register">Регистрация</a>
+            <a class="auth-login" href="/login">Вход</a>
+            <a class="auth-register" href="/register">Регистрация</a>
         <?php endif; ?>
     </nav>
 </header>

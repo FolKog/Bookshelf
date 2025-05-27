@@ -17,7 +17,7 @@ $genres = array_unique(array_column($books, 'genre'));
 
 <div class="container">
     <!-- Кнопка для открытия модального окна -->
-    <button id="openModal" class="btn btn-primary">Фильтровать по жанрам</button>
+    <button id="openModal" class="btn btn-primary filter">Фильтровать по жанрам</button>
 
     <!-- Модальное окно -->
     <div id="genreModal" class="modal">
